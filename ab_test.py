@@ -22,7 +22,7 @@ import statsmodels.stats.proportion as smpro
 
 # COMMAND ----------
 
-df_raw = pd.read_csv( '/Workspace/Repos/twitch.k3a99@passinbox.com/ab_test/data/ab_testing.csv' )
+df_raw = pd.read_csv( '/Workspace/Repos/twitch.k3a99@passinbox.com/ab_test/data/ab_data.csv' )
 df_raw.sample(10)
 
 # COMMAND ----------
@@ -100,3 +100,57 @@ sample_n = math.ceil ( smpow.NormalIndPower().solve_power(
 
 print( f'Tamanho da amostra de cada grupo - Controle e Tratamento: { sample_n }' )
 print( f'Tamanho total da amostra: { sample_n * 2 }' )
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 3. Preparação dos Dados
+
+# COMMAND ----------
+
+df1 = df_raw.copy()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Análise Descritiva dos Dados e Valores Faltantes
+
+# COMMAND ----------
+
+df1.head()
+
+# COMMAND ----------
+
+print( f'Número de linhas: {df1.shape[0]}' )
+print( f'Número de colunas: {df1.shape[1]}' ) 
+
+# COMMAND ----------
+
+df1.isna().sum()
+
+# COMMAND ----------
+
+df1 = df1.dropna()
+
+# COMMAND ----------
+
+df1.isna().sum()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Conferindo as _flags_ dos Grupos
+
+# COMMAND ----------
+
+df1.head()
+
+# COMMAND ----------
+
+df1[['user_id', 'group', 'landing_page']].groupby( ['group', 'landing_page'] ).count().reset_index()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC - Verificar o número único de user_ids e ( talvez ) remover duplicados
+# MAGIC - Pensar em uma maneira de remover os que viram uma página diferente da página esperada em razão do grupo que o user pertence
