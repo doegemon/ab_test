@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.stats.power as smpow
 import statsmodels.stats.proportion as smpro
+from scipy.stats import chi2_contingency
 
 # COMMAND ----------
 
@@ -37,7 +38,9 @@ df_raw.sample(10)
 
 # COMMAND ----------
 
-
+# MAGIC %md
+# MAGIC - H0 = A conversão da nova página é de 13%
+# MAGIC - H1 = A conversão da nova página é diferente de 13%
 
 # COMMAND ----------
 
@@ -134,7 +137,8 @@ df1 = df1.dropna()
 
 # COMMAND ----------
 
-df1.isna().sum()
+df1['timestamp'] = pd.to_datetime(df1['timestamp']).apply(lambda x: x.strftime('%Y-%m-%d'))
+df1 = df1.rename(columns={'timestamp': 'session_dt'})
 
 # COMMAND ----------
 
@@ -235,3 +239,78 @@ conversion_rate_treatment
 
 df_vs = pd.DataFrame( {'Controle': conversion_rate_control, 'Tratamento': conversion_rate_treatment} , index=range( 1,2 ) )
 df_vs
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 4. Teste de Hipótese
+
+# COMMAND ----------
+
+df_ab.sample(10)
+
+# COMMAND ----------
+
+df_test = df_ab[['group', 'converted']].groupby('group').agg({'converted': ['sum', 'count']})
+df_test = df_test.rename(columns={'sum': 'converted', 'count': 'total'})
+df_test
+
+# COMMAND ----------
+
+chi_val, pval, dof, expected = chi2_contingency(df_test)
+
+print(f'p-value: {pval}')
+
+if pval < significance_lvl: 
+    print('\nRejeitamos a hipótese nula')
+else: 
+    print('\nFalhamos em rejeitar a hipótese nula')
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 5. Traduzindo para R$
+
+# COMMAND ----------
+
+df5 = df2.copy()
+
+# COMMAND ----------
+
+df5.head()
+
+# COMMAND ----------
+
+df_day = df5[['user_id', 'session_dt']].groupby('session_dt').count().reset_index()
+df_day.rename(columns={'user_id': 'total_users'}, inplace=True)
+df_day.head()
+
+# COMMAND ----------
+
+# Current GMV
+df_day['current_buyers'] = np.ceil(df_day['total_users'] * 0.13).astype(int)
+df_day['current_GMV'] = df_day['current_buyers'] * 4500
+
+df_day.head()
+
+# COMMAND ----------
+
+# Expected GMV
+df_day['expected_buyers'] = np.ceil(df_day['total_users'] * 0.15).astype(int)
+df_day['expected_GMV'] = df_day['expected_buyers'] * 4500
+
+df_day.head()
+
+# COMMAND ----------
+
+gmv = df_day['current_GMV'].sum()
+new_gmv = df_day['expected_GMV'].sum()
+
+lift = ((new_gmv - gmv) / gmv)*100
+abs_lift = new_gmv - gmv
+
+print(f'Current GMV: {gmv}')
+print(f'Expected GMV: {new_gmv}')
+
+print(f'\nExpected % Lift: %{np.round(lift, 2)}')
+print(f'Expected Absolute Lift: {abs_lift}')
